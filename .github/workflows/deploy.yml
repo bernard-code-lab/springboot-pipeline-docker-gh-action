@@ -9,10 +9,11 @@ on:
       - master
 
 # Single source of truth: change here to reuse across metadata, attestation, summary, Docker Hub.
+# GHCR owner must be the GitHub user/org that owns the repo (use github.repository_owner).
 env:
   IMAGE_NAME: springboot-pipeline-docker-gh-action
   DOCKERHUB_NAMESPACE: rafaelc869
-  GHCR_NAMESPACE: rafaelc869
+  GHCR_NAMESPACE: ${{ github.repository_owner }}
 
 jobs:
   # ─────────────────────────────────────────
