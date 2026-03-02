@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### CI-generated ###
+docker-metadata-bake.json
