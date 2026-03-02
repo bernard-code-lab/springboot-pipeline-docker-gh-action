@@ -1,12 +1,12 @@
 name: Deploy — Build, Scan & Push
 
-# Push to development/staging/production runs tests, then build + scan + push + attestation.
+# Push to development/staging/master runs tests, then build + scan + push + attestation.
 on:
   push:
     branches:
       - development
       - staging
-      - production
+      - master
 
 jobs:
   # ─────────────────────────────────────────
@@ -41,8 +41,8 @@ jobs:
         id: env
         run: |
           BRANCH="${{ github.ref_name }}"
-          if [ "$BRANCH" = "production" ]; then
-            echo "environment=production" >> $GITHUB_OUTPUT
+          if [ "$BRANCH" = "master" ]; then
+            echo "environment=master" >> $GITHUB_OUTPUT
             echo "registry=docker.io/myorg" >> $GITHUB_OUTPUT
           elif [ "$BRANCH" = "staging" ]; then
             echo "environment=staging" >> $GITHUB_OUTPUT
@@ -84,7 +84,7 @@ jobs:
             type=ref,event=branch
             type=sha,prefix=sha-,format=short
             type=raw,value=${{ steps.env.outputs.environment }}
-            type=semver,pattern={{version}},enable=${{ github.ref_name == 'production' }}
+            type=semver,pattern={{version}},enable=${{ github.ref_name == 'master' }}
           annotations: |
             org.opencontainers.image.description=springboot-pipeline-docker-gh-action REST API — ${{ steps.env.outputs.environment }}
             org.opencontainers.image.licenses=MIT
@@ -196,7 +196,7 @@ jobs:
 
       # Keep Docker Hub readme in sync with the repo README
       - name: Update Docker Hub description
-        if: github.ref_name == 'production'
+        if: github.ref_name == 'master'
         uses: peter-evans/dockerhub-description@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
