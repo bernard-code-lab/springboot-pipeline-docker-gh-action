@@ -86,8 +86,8 @@ Environment and registry are derived from the branch in `deploy.yml` (e.g. devel
 
 ## Required secrets (for Deploy workflow)
 
-- `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` — Docker Hub login (staging/production).
-- `GITHUB_TOKEN` — used automatically for GHCR (development); no extra secret for GHCR.
+- **Docker Hub:** `DOCKER_USER` (variable) and `DOCKER_PAT` (secret) — used for push and (on `master`) for syncing the repo README to the Docker Hub full description. **Note:** Docker Hub Personal Access Tokens only allow registry (push/pull); the API to update repository description returns 403. The “Update Docker Hub description” step is best-effort (`continue-on-error`); the pipeline still succeeds if it fails. To actually update the description, use account password (with 2FA disabled) instead of PAT, or wait for Docker to add PAT scopes for repo metadata.
+- **GHCR:** `GITHUB_TOKEN` — used automatically; no extra secret.
 
 Optional: `MAVEN_TOKEN` if you need private Maven repos in the build.
 
