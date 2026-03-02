@@ -80,7 +80,7 @@ Environment and registry are derived from the branch in `deploy.yml` (e.g. devel
 ## Deploy and rollback
 
 - **Use digest or immutable tags.** For idempotent deploy and safe rollback, reference the image by **digest** (e.g. `docker.io/myorg/springboot-pipeline-docker-gh-action@sha256:...`) or by **immutable tag** (e.g. `sha-abc1234`). Do not rely only on mutable tags like `staging`, `production`, or `latest` — they change on every push.
-- **Where to get the reference:** After each run, the Deploy workflow writes the image digest and `sha-*` tag to the job summary and exposes them as job outputs (`image_digest`, `image_sha_tag`) for use by downstream deploy jobs or runbooks.
+- **Where to get the reference:** After each run, the Deploy workflow writes the image digest and `sha-*` tag to the job summary and exposes them as job outputs (`image_digest`, `image_sha_tag`) for use by downstream deploy jobs or runbooks. In a calling workflow, use `needs.build-and-push.outputs.image_digest` and `needs.build-and-push.outputs.image_sha_tag`.
 - **Semver in production:** Tags like `1.2.3` or `latest` (for semver) are generated when the workflow runs on a **git tag** (e.g. `v1.2.3`). Pushing only to the `production` branch does not create semver tags; use `git tag v1.2.3 && git push origin v1.2.3` or trigger the workflow from a tag push if you want versioned tags.
 - **Attestation:** Provenance and SBOM are attested for the primary image `docker.io/myorg/springboot-pipeline-docker-gh-action`. When the same image is pushed to GHCR, attestation is for the Docker Hub reference; both registries hold the same content.
 
