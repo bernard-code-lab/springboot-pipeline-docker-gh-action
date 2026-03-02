@@ -174,13 +174,15 @@ jobs:
             springboot-pipeline-docker-gh-action.cache-to=type=gha,mode=max
 
       # Attest provenance and SBOM to the pushed image (digest from bake metadata)
+      # Pass metadata via env to avoid shell syntax errors from inlining JSON (quotes, parentheses)
       - name: Get image digest for attestation
         id: attest
         env:
           BAKE_TARGET: ${{ env.IMAGE_NAME }}
+          METADATA_JSON: ${{ steps.bake.outputs.metadata }}
         run: |
-          METADATA='${{ steps.bake.outputs.metadata }}'
-          DIGEST=$(echo "$METADATA" | jq -r --arg t "$BAKE_TARGET" '.[$t]["containerimage.digest"] // empty')
+          echo "$METADATA_JSON" > /tmp/bake-metadata.json
+          DIGEST=$(jq -r --arg t "$BAKE_TARGET" '.[$t]["containerimage.digest"] // empty' /tmp/bake-metadata.json)
           if [ -z "$DIGEST" ]; then
             echo "Could not get digest from bake metadata (target=$BAKE_TARGET)"
             exit 1
