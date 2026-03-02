@@ -29,9 +29,9 @@ USER appuser
 
 COPY --from=builder /app/target/*.jar app.jar
 
-# curl for HEALTHCHECK (Alpine JRE does not include wget)
+# curl for HEALTHCHECK; apk upgrade to fix CVE-2026-25646 (libpng <1.6.55-r0)
 USER root
-RUN apk add --no-cache curl
+RUN apk update && apk upgrade --no-cache && apk add --no-cache curl
 USER appuser
 
 EXPOSE 8080

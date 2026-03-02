@@ -28,6 +28,8 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
+		<!-- Override jackson-core to fix GHSA-72hv-8253-57qq (Allocation of Resources Without Limits or Throttling) -->
+		<jackson-core.version>3.1.0</jackson-core.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -37,6 +39,12 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>
+		</dependency>
+		<!-- Explicit override to fix GHSA-72hv-8253-57qq (jackson-core 3.0.x vulnerable) -->
+		<dependency>
+			<groupId>tools.jackson.core</groupId>
+			<artifactId>jackson-core</artifactId>
+			<version>${jackson-core.version}</version>
 		</dependency>
 
 		<dependency>
