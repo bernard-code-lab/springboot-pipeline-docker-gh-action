@@ -1,0 +1,32 @@
+# Git
+.git
+.github
+
+# Build output
+target
+
+# IDE and OS
+.idea
+*.iml
+.vscode
+.DS_Store
+Thumbs.db
+
+# Docs (not needed in image build)
+*.md
+!README.md
+
+# Env and local config
+.env
+.env.*
+!.env.example
+
+# Docker
+Dockerfile*
+docker-compose*
+compose.yaml
+.dockerignore
+
+# Misc
+*.log
+*.tmp

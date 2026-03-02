@@ -1,0 +1,6 @@
+# Used by CI/CD integration test: expects image springboot-pipeline-docker-gh-action:test
+services:
+  app:
+    image: springboot-pipeline-docker-gh-action:test
+    ports:
+      - "8080:8080"

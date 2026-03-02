@@ -1,0 +1,205 @@
+name: Deploy — Build, Scan & Push
+
+# Push to development/staging/production runs tests, then build + scan + push + attestation.
+on:
+  push:
+    branches:
+      - development
+      - staging
+      - production
+
+jobs:
+  # ─────────────────────────────────────────
+  # JOB 1: Unit Tests (gate before any build)
+  # ─────────────────────────────────────────
+  test:
+    uses: ./.github/workflows/test.yml
+
+  # ─────────────────────────────────────────
+  # JOB 2: Build, Scan & Push
+  # ─────────────────────────────────────────
+  build-and-push:
+    name: Build, Scan & Push
+    runs-on: ubuntu-latest
+    needs: test   # Only runs if tests pass
+    outputs:
+      image_digest: ${{ steps.summary.outputs.digest }}
+      image_sha_tag: ${{ steps.summary.outputs.sha_tag }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Determine environment from branch name
+      - name: Set environment context
+        id: env
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          if [ "$BRANCH" = "production" ]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+            echo "registry=docker.io/myorg" >> $GITHUB_OUTPUT
+          elif [ "$BRANCH" = "staging" ]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "registry=docker.io/myorg" >> $GITHUB_OUTPUT
+          else
+            echo "environment=development" >> $GITHUB_OUTPUT
+            echo "registry=ghcr.io/myorg" >> $GITHUB_OUTPUT
+          fi
+
+      # Install Docker Engine (ensures latest stable version on runner)
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v4
+
+      # QEMU enables cross-compilation for ARM64
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # Boot BuildKit builder with parallel workers
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          config-inline: |
+            [worker.oci]
+              max-parallelism = 4
+
+      # Install Compose (used for integration test spin-up)
+      - name: Set up Docker Compose
+        uses: docker/setup-compose-action@v1
+
+      # Generate tags, labels and annotations from Git metadata
+      - name: Docker Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            docker.io/myorg/springboot-pipeline-docker-gh-action
+            ghcr.io/myorg/springboot-pipeline-docker-gh-action
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=sha-,format=short
+            type=raw,value=${{ steps.env.outputs.environment }}
+            type=semver,pattern={{version}},enable=${{ github.ref_name == 'production' }}
+          annotations: |
+            org.opencontainers.image.description=springboot-pipeline-docker-gh-action REST API — ${{ steps.env.outputs.environment }}
+            org.opencontainers.image.licenses=MIT
+
+      # TAG fallback for Bake: use semver version or sha-<short> when no tag
+      - name: Set TAG for Bake
+        id: tag
+        run: |
+          if [ -n "${{ steps.meta.outputs.version }}" ]; then
+            echo "tag=${{ steps.meta.outputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=sha-${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
+          fi
+
+      # Login to Docker Hub
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Login to GHCR (used for development builds)
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build image locally first (no push) to run tests against it
+      - name: Build image for testing (export to Docker daemon)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          push: false
+          tags: springboot-pipeline-docker-gh-action:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Spin up the app + dependencies and run integration smoke test
+      - name: Run integration tests with Compose
+        run: |
+          docker compose -f docker-compose.yml up -d
+          sleep 10
+          curl --fail http://localhost:8080/actuator/health
+          docker compose down
+
+      # Scan the locally built image for vulnerabilities BEFORE push
+      - name: Docker Scout — CVE scan
+        uses: docker/scout-action@v1
+        with:
+          command: cves
+          image: springboot-pipeline-docker-gh-action:test
+          only-severities: critical,high
+          exit-code: true   # Fails the pipeline if critical CVEs found
+
+      # Build final multi-platform image using Bake and push to registries
+      - name: Build and push with Bake
+        id: bake
+        uses: docker/bake-action@v6
+        env:
+          ENVIRONMENT: ${{ steps.env.outputs.environment }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        with:
+          files: |
+            ./docker-bake.hcl
+            ${{ steps.meta.outputs.bake-file }}
+          push: true
+          set: |
+            springboot-pipeline-docker-gh-action.cache-from=type=gha
+            springboot-pipeline-docker-gh-action.cache-to=type=gha,mode=max
+
+      # Attest provenance and SBOM to the pushed image (digest from bake metadata)
+      - name: Get image digest for attestation
+        id: attest
+        run: |
+          METADATA='${{ steps.bake.outputs.metadata }}'
+          DIGEST=$(echo "$METADATA" | jq -r '.["springboot-pipeline-docker-gh-action"]["containerimage.digest"] // empty')
+          if [ -z "$DIGEST" ]; then
+            echo "Could not get digest from bake metadata"
+            exit 1
+          fi
+          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
+
+      - name: Attest image provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: docker.io/myorg/springboot-pipeline-docker-gh-action
+          subject-digest: ${{ steps.attest.outputs.digest }}
+          push-to-registry: true
+
+      # Expose digest and sha tag for deploy/rollback (job summary and outputs)
+      - name: Publish image summary and outputs
+        id: summary
+        run: |
+          DIGEST="${{ steps.attest.outputs.digest }}"
+          SHA_TAG="sha-${GITHUB_SHA:0:7}"
+          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
+          echo "sha_tag=$SHA_TAG" >> $GITHUB_OUTPUT
+          echo "## Image (deploy / rollback)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Reference | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **By digest** | \`docker.io/myorg/springboot-pipeline-docker-gh-action@$DIGEST\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Immutable tag** | \`docker.io/myorg/springboot-pipeline-docker-gh-action:$SHA_TAG\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Use digest or \`sha-*\` tag for rollback and idempotent deploy." >> $GITHUB_STEP_SUMMARY
+
+      # Keep Docker Hub readme in sync with the repo README
+      - name: Update Docker Hub description
+        if: github.ref_name == 'production'
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: myorg/springboot-pipeline-docker-gh-action
+          readme-filepath: ./README.md
