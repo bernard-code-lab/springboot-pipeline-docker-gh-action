@@ -19,7 +19,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Validate Dockerfile best practices before wasting build time
+      # Validate Dockerfile best practices before wasting build time (reuse GHA cache when available)
       - name: Docker build checks (lint)
         uses: docker/build-push-action@v6
         with:
@@ -27,3 +27,4 @@ jobs:
           push: false
           load: false
           check: true
+          cache-from: type=gha

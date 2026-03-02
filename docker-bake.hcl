@@ -2,6 +2,7 @@
 # The metadata-action injects tags and labels into this target; our build target inherits from it.
 target "docker-metadata-action" {}
 
+# Default for local bake only; CI gets full image names from metadata-action bake-file.
 variable "REGISTRY" {
   default = "docker.io/rafaelc869"
 }
