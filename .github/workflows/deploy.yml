@@ -43,13 +43,13 @@ jobs:
           BRANCH="${{ github.ref_name }}"
           if [ "$BRANCH" = "master" ]; then
             echo "environment=master" >> $GITHUB_OUTPUT
-            echo "registry=docker.io/myorg" >> $GITHUB_OUTPUT
+            echo "registry=docker.io/rafaelc869" >> $GITHUB_OUTPUT
           elif [ "$BRANCH" = "staging" ]; then
             echo "environment=staging" >> $GITHUB_OUTPUT
-            echo "registry=docker.io/myorg" >> $GITHUB_OUTPUT
+            echo "registry=docker.io/rafaelc869" >> $GITHUB_OUTPUT
           else
             echo "environment=development" >> $GITHUB_OUTPUT
-            echo "registry=ghcr.io/myorg" >> $GITHUB_OUTPUT
+            echo "registry=ghcr.io/rafaelc869" >> $GITHUB_OUTPUT
           fi
 
       # Install Docker Engine (ensures latest stable version on runner)
@@ -78,8 +78,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            docker.io/myorg/springboot-pipeline-docker-gh-action
-            ghcr.io/myorg/springboot-pipeline-docker-gh-action
+            docker.io/rafaelc869/springboot-pipeline-docker-gh-action
+            ghcr.io/rafaelc869/springboot-pipeline-docker-gh-action
           tags: |
             type=ref,event=branch
             type=sha,prefix=sha-,format=short
@@ -179,7 +179,7 @@ jobs:
       - name: Attest image provenance
         uses: actions/attest-build-provenance@v1
         with:
-          subject-name: docker.io/myorg/springboot-pipeline-docker-gh-action
+          subject-name: docker.io/rafaelc869/springboot-pipeline-docker-gh-action
           subject-digest: ${{ steps.attest.outputs.digest }}
           push-to-registry: true
 
@@ -195,8 +195,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Reference | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| **By digest** | \`docker.io/myorg/springboot-pipeline-docker-gh-action@$DIGEST\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Immutable tag** | \`docker.io/myorg/springboot-pipeline-docker-gh-action:$SHA_TAG\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **By digest** | \`docker.io/rafaelc869/springboot-pipeline-docker-gh-action@$DIGEST\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Immutable tag** | \`docker.io/rafaelc869/springboot-pipeline-docker-gh-action:$SHA_TAG\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Use digest or \`sha-*\` tag for rollback and idempotent deploy." >> $GITHUB_STEP_SUMMARY
 
@@ -207,5 +207,5 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: myorg/springboot-pipeline-docker-gh-action
+          repository: rafaelc869/springboot-pipeline-docker-gh-action
           readme-filepath: ./README.md
