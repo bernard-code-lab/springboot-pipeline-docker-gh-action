@@ -3,7 +3,7 @@
 target "docker-metadata-action" {}
 
 variable "REGISTRY" {
-  default = "docker.io/myorg"
+  default = "docker.io/rafaelc869"
 }
 
 variable "TAG" {
