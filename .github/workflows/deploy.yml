@@ -147,6 +147,7 @@ jobs:
           exit-code: true   # Fails the pipeline if critical CVEs found
 
       # Build final multi-platform image using Bake and push to registries
+      # Use source: . so both docker-bake.hcl and docker-metadata-bake.json (generated) are in workspace
       - name: Build and push with Bake
         id: bake
         uses: docker/bake-action@v6
@@ -154,6 +155,7 @@ jobs:
           ENVIRONMENT: ${{ steps.env.outputs.environment }}
           TAG: ${{ steps.tag.outputs.tag }}
         with:
+          source: .
           files: |
             ./docker-bake.hcl
             ./docker-metadata-bake.json
