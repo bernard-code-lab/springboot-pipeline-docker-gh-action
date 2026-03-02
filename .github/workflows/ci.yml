@@ -2,7 +2,7 @@ name: CI — Test & Check
 
 on:
   pull_request:
-    branches: [development, staging, production]
+    branches: [development, staging, master]
 
 jobs:
   test:
