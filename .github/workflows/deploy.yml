@@ -215,16 +215,3 @@ jobs:
           echo "| **Immutable tag** | \`${REGISTRY_PREFIX}/${IMAGE_NAME}:${SHA_TAG}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Use digest or \`sha-*\` tag for rollback and idempotent deploy." >> $GITHUB_STEP_SUMMARY
-
-      # Keep Docker Hub full description in sync with repo README.
-      # Note: Docker Hub PATs only allow push/pull; description API returns 403. This step
-      # is best-effort (continue-on-error) until Docker adds PAT scopes for repo metadata.
-      - name: Update Docker Hub description
-        if: github.ref_name == 'master'
-        continue-on-error: true
-        uses: peter-evans/dockerhub-description@v4
-        with:
-          username: ${{ vars.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PAT }}
-          repository: ${{ env.DOCKERHUB_NAMESPACE }}/${{ env.IMAGE_NAME }}
-          readme-filepath: ./README.md
